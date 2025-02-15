@@ -1,15 +1,23 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 export default {
 	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
+		console.log('entrou aqui');
+		const country = request.headers.get('cf-ipcountry') || 'Unknown';
+		const userAgent = request.headers.get('user-agent') || 'Unknown';
+
+		// Gerar um fingerprint simples baseado no User-Agent
+		const fingerprint = generateFingerprint(userAgent);
+
+		try {
+			// Inserir dados no banco D1
+			await env.DB.prepare(`INSERT INTO acessos (pais, fingerprint) VALUES (?, ?)`).bind(country, fingerprint).run();
+
+			return new Response('Dados salvos com sucesso!', { status: 200 });
+		} catch (error) {
+			return new Response('Erro ao salvar dados: ' + error.message, { status: 500 });
+		}
 	},
 };
+
+function generateFingerprint(userAgent) {
+	return btoa(unescape(encodeURIComponent(userAgent)));
+}
